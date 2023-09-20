@@ -34,7 +34,7 @@ Java 21 has the following **15** features:
 
 ![Java21Thumbnail](Java21Thumbnail.png)
 
-[Upgrade To Java 21 playlist](https://www.youtube.com/playlist?list=PLQDzPczdXrTgqEc0uomGYDS0SFu7qY3g3)
+[Upgrade To Java 21 playlist](https://www.youtube.com/playlist?list=PLQDzPczdXrTjGmXvnHtnQ6S1i5pO0-NvK)
 
 ## Table of contents
 
