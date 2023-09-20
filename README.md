@@ -2,6 +2,8 @@
 
 > This is a tutorial course covering new features and upgrade to Java 21 LTS version.
 
+![Java21Thumbnail](Java21Thumbnail.png)
+
 Tools used:
 
 - JDK 21
@@ -29,12 +31,6 @@ Java 21 has the following **15** features:
 - Prepare to Disallow the Dynamic Loading of Agents [JEP-451](https://openjdk.org/jeps/451)
 - Key Encapsulation Mechanism API [JEP-452](https://openjdk.org/jeps/452)
 - Structured Concurrency (Preview) [JEP-453](https://openjdk.org/jeps/453)
-
-### Youtube
-
-![Java21Thumbnail](Java21Thumbnail.png)
-
-[Upgrade To Java 21 playlist](https://www.youtube.com/playlist?list=PLQDzPczdXrTjGmXvnHtnQ6S1i5pO0-NvK)
 
 ## Table of contents
 
@@ -64,6 +60,12 @@ Java 21 has the following **15** features:
 7. Maintenance and Deprecation
     - Deprecate the Windows 32-bit x86 Port for Removal
     - Prepare to Disallow the Dynamic Loading of Agents
+
+## Youtube
+
+[Upgrade To Java 21 playlist](https://www.youtube.com/playlist?list=PLQDzPczdXrTjGmXvnHtnQ6S1i5pO0-NvK)
+
+- [01 - Upgrade to Java 21 - Tutorial Series](https://youtu.be/5IPiXr95nrA)
 
 ---
 
