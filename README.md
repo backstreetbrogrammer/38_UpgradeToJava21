@@ -66,6 +66,7 @@ Java 21 has the following **15** features:
 [Upgrade To Java 21 playlist](https://www.youtube.com/playlist?list=PLQDzPczdXrTjGmXvnHtnQ6S1i5pO0-NvK)
 
 - [01 - Upgrade to Java 21 - Tutorial Series](https://youtu.be/5IPiXr95nrA)
+- [02 - Upgrade to Java 21 - Table Of Contents](https://youtu.be/QmZ8Uy0uy7w)
 
 ---
 
