@@ -250,5 +250,9 @@ Run the above unit test case from IntelliJ or alternatively from **Terminal**: `
 
 Successful run of the above unit test case will confirm the whole project setup is good.
 
+### Youtube
+
+- [03 - JDK 21, Maven, IntelliJ installation and project setup](https://youtu.be/nJ2mEUrYiS4)
+
 ---
 
