@@ -137,5 +137,118 @@ Help -> Check for Updates...
 
 ### Project Setup
 
-We will be using **Maven build** project in this tutorial series.
+Once the new project is created in IntelliJ using Java 21, **Open Module Settings** of the project and set as following:
+
+![ProjectSettings](ProjectSettings.PNG)
+
+![ProjectModules](ProjectModules.PNG)
+
+![ProjectSDKs](ProjectSDKs.PNG)
+
+Use the given [pom.xml](https://github.com/backstreetbrogrammer/38_UpgradeToJava21/blob/main/pom.xml) file as a template
+for creating and building Java Maven project in IntelliJ.
+
+We need to configure the **latest** versions of each maven [dependency](https://mvnrepository.com/) and maven
+[plugins](https://maven.apache.org/plugins/) to ensure that its compatible with Java 21.
+
+```
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <java.version>21</java.version>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <junit-platform.version>5.10.0</junit-platform.version>
+        <mockito.version>5.5.0</mockito.version>
+    </properties>
+```
+
+**_maven-compiler-plugin_**
+
+```
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                    <enablePreview>true</enablePreview>
+                    <compilerArgs>--enable-preview</compilerArgs>
+                </configuration>
+            </plugin>
+```
+
+**_maven-surefire-plugin_**
+
+```
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.1.2</version>
+                <configuration>
+                    <argLine>
+                        --enable-preview
+                        --add-modules jdk.incubator.vector
+                        -XX:+EnableDynamicAgentLoading
+                    </argLine>
+                </configuration>
+            </plugin>
+```
+
+**_maven-failsafe-plugin_**
+
+```
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>3.1.2</version>
+                <configuration>
+                    <argLine>
+                        --enable-preview
+                        --add-modules jdk.incubator.vector
+                        -XX:+EnableDynamicAgentLoading
+                    </argLine>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+```
+
+From Maven gutter in the right pane of IntelliJ IDE -> click on `Lifecycle -> verify`
+
+![MavenVerify](MavenVerify.PNG)
+
+**Smoke Test to verify all the project setup is good**
+
+```java
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static java.lang.StringTemplate.STR;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+public class StringTemplateTest {
+
+    @Test
+    @DisplayName("Test String Templates (Preview) [JEP-430]")
+    void testStringTemplates() {
+        final String java = "Java 21";
+        final String comment = STR."\{java} is awesome";
+        assertEquals("Java 21 is awesome", comment);
+    }
+}
+```
+
+Run the above unit test case from IntelliJ or alternatively from **Terminal**: `mvn clean test`
+
+Successful run of the above unit test case will confirm the whole project setup is good.
+
+---
 

@@ -78,8 +78,7 @@
                     <source>21</source>
                     <target>21</target>
                     <enablePreview>true</enablePreview>
-                    <compilerArgs>--enable-preview
-                    </compilerArgs>
+                    <compilerArgs>--enable-preview</compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
