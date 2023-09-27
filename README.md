@@ -70,3 +70,72 @@ Java 21 has the following **15** features:
 
 ---
 
+## Chapter 01. Java Installation and Project Setup
+
+### Java 21 installation
+
+Search **Java 21 download** in [Google](https://www.google.com/) and navigate to Oracle
+[Java Downloads](https://www.oracle.com/hk/java/technologies/downloads/) page.
+
+Based on the OS, we can download installation file.
+
+For **Windows**, download exe file:
+[x64 Installer](https://download.oracle.com/java/21/latest/jdk-21_windows-x64_bin.exe)
+
+Double-click the installer exe file and follow the default instructions to install JDK 21.
+
+Once complete, JDK 21 will be installed in `C:\Program Files\Java\jdk-21`.
+
+Set `JAVA_HOME` system variable and also set it in `Path`.
+
+![JAVA_HOME](JAVA_HOME.PNG)
+
+![Path](Path.PNG)
+
+Open `cmd` and verify Java version:
+
+![JavaVersionCmd](JavaVersionCmd.PNG)
+
+### Maven installation
+
+Search **maven download** in [Google](https://www.google.com/) and navigate to
+[Download Apache Maven](https://maven.apache.org/download.cgi) page.
+
+Based on the OS, we can download installation file.
+
+For **Windows**, download zip file:
+[Binary zip archive](https://dlcdn.apache.org/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.zip)
+
+Extract the folder in any local directory: `C:\Maven\apache-maven-3.9.4`.
+
+Set `M2_HOME` and `MAVEN_HOME` system variables and also set it in `Path`.
+
+![MAVEN_HOME](MAVEN_HOME.PNG)
+
+![Path_Maven](Path_Maven.PNG)
+
+Open `cmd` and verify Maven version:
+
+![MavenVersionCmd](MavenVersionCmd.PNG)
+
+### IntelliJ installation
+
+Search **intellij download** in [Google](https://www.google.com/) and navigate to
+[IntelliJ IDEA Download](https://www.jetbrains.com/idea/download/#section=windows) page.
+
+Based on the OS, we can download IntelliJ **Community** Edition:
+
+[Windows IntelliJ](https://www.jetbrains.com/idea/download/download-thanks.html?platform=windows&code=IIC)
+
+Please note that latest IntelliJ IDEA **2023.2.2** version already supports JDK 21.
+
+If IntelliJ was already installed before, we can just Update it to latest version from:
+
+```
+Help -> Check for Updates...
+```
+
+### Project Setup
+
+We will be using **Maven build** project in this tutorial series.
+
