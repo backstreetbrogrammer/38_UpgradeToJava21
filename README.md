@@ -34,11 +34,11 @@ Java 21 has the following **15** features:
 
 ## Table of contents
 
-1. Java Installation and Project Setup
-    - Java 21 installation
-    - Maven installation
-    - IntelliJ installation
-    - Project Setup
+1. [Java Installation and Project Setup](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#chapter-01-java-installation-and-project-setup)
+    - [Java 21 installation](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#java-21-installation)
+    - [Maven installation](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#maven-installation)
+    - [IntelliJ installation](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#intellij-installation)
+    - [Project Setup](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#project-setup)
 2. Project Loom
     - Virtual Threads
     - Scoped Values
