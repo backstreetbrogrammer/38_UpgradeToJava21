@@ -163,6 +163,49 @@ We need to configure the **latest** versions of each maven [dependency](https://
     </properties>
 ```
 
+[JEP 11: Incubator Modules](https://openjdk.org/jeps/11)
+
+**Summary**
+
+Incubator modules are a means of putting **non-final** APIs and non-final tools in the hands of developers, while the
+APIs/tools progress towards either finalization or removal in a future release.
+
+**Goals**
+
+Enable JDK Release Projects to distribute a limited set of APIs and tools that not final and complete, and which would
+benefit from developer or user feedback. This will reduce the chance of costly mistakes in the Java SE Platform and the
+JDK.
+
+[JEP 12: Preview Features](https://openjdk.org/jeps/12)
+
+**Summary**
+
+A preview feature is a new feature of the Java language, Java Virtual Machine, or Java SE API that is fully specified,
+fully implemented, and yet impermanent. It is available in a JDK feature release to provoke developer feedback based on
+real world use; this may lead to it becoming permanent in a future Java SE Platform.
+
+**Goals**
+
+- Allow Java platform developers to communicate whether a new feature is "coming to Java" in approximately its current
+  form within the next 12 months.
+- Define a model for partitioning new language, VM, and API features based on whether they are permanent or
+  impermanent in
+  the Java SE Platform (that is, whether they will exist in the same form for all future releases, or will exist in a
+  different form or not at all).
+- Communicate the intent that code which uses preview features from an older release of the Java SE Platform will not
+  necessarily compile or run on a newer release.
+- Outline the relationship between preview features on the one hand, and "experimental" (HotSpot) / "incubating" (API)
+  features on the other hand.
+
+**Difference between Incubator Module and Preview Feature**
+
+- Incubation applies to modules, and a preview feature is something that is more closely tight in with the language and
+  the libraries. ~ **_Stuart Marks_**
+- Preview features are really finished but are waiting for a round of feedback whereas the incubator mechanism has more
+  room to iterate over the api several times to get feedback. ~ **_Brian Goetz_**
+
+**_Plugins added:_**
+
 **_maven-compiler-plugin_**
 
 ```
