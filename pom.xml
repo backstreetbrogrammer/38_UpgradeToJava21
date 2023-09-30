@@ -11,85 +11,69 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <java.version>21</java.version>
-        <maven.compiler.source>${java.version}</maven.compiler.source>
-        <maven.compiler.target>${java.version}</maven.compiler.target>
-        <junit-platform.version>5.10.0</junit-platform.version>
-        <mockito.version>5.5.0</mockito.version>
+        <maven.compiler.release>21</maven.compiler.release>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>5.10.0</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-bom</artifactId>
+                <version>5.5.0</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-bom</artifactId>
+                <version>3.24.2</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <version>${junit-platform.version}</version>
+            <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
-            <version>${junit-platform.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>${junit-platform.version}</version>
             <scope>test</scope>
         </dependency>
-
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <version>3.24.2</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.hamcrest</groupId>
-            <artifactId>hamcrest-library</artifactId>
-            <version>2.2</version>
-            <scope>test</scope>
-        </dependency>
-
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-junit-jupiter</artifactId>
-            <version>${mockito.version}</version>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
 
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
-                <configuration>
-                    <source>21</source>
-                    <target>21</target>
-                    <enablePreview>true</enablePreview>
-                    <compilerArgs>--enable-preview</compilerArgs>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.1.2</version>
                 <configuration>
                     <argLine>
+                        -XX:+EnableDynamicAgentLoading
                         --enable-preview
                         --add-modules jdk.incubator.vector
-                        -XX:+EnableDynamicAgentLoading
                     </argLine>
                 </configuration>
             </plugin>
@@ -99,9 +83,9 @@
                 <version>3.1.2</version>
                 <configuration>
                     <argLine>
+                        -XX:+EnableDynamicAgentLoading
                         --enable-preview
                         --add-modules jdk.incubator.vector
-                        -XX:+EnableDynamicAgentLoading
                     </argLine>
                 </configuration>
                 <executions>
@@ -113,28 +97,24 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-site-plugin</artifactId>
-                <version>4.0.0-M9</version>
-            </plugin>
         </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.11.0</version>
+                    <configuration>
+                        <debug>false</debug>
+                        <enablePreview>true</enablePreview>
+                        <compilerArgs>
+                            <arg>--add-modules</arg>
+                            <arg>jdk.incubator.vector</arg>
+                        </compilerArgs>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
-    <reporting>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-report-plugin</artifactId>
-                <version>3.1.2</version>
-                <configuration>
-                    <argLine>
-                        --enable-preview
-                        --add-modules jdk.incubator.vector
-                        -XX:+EnableDynamicAgentLoading
-                    </argLine>
-                </configuration>
-            </plugin>
-        </plugins>
-    </reporting>
 
 </project>

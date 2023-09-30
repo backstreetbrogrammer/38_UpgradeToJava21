@@ -145,23 +145,8 @@ Once the new project is created in IntelliJ using Java 21, **Open Module Setting
 
 ![ProjectSDKs](ProjectSDKs.PNG)
 
-Use the given [pom.xml](https://github.com/backstreetbrogrammer/38_UpgradeToJava21/blob/main/pom.xml) file as a template
-for creating and building Java Maven project in IntelliJ.
-
 We need to configure the **latest** versions of each maven [dependency](https://mvnrepository.com/) and maven
 [plugins](https://maven.apache.org/plugins/) to ensure that its compatible with Java 21.
-
-```
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <java.version>21</java.version>
-        <maven.compiler.source>${java.version}</maven.compiler.source>
-        <maven.compiler.target>${java.version}</maven.compiler.target>
-        <junit-platform.version>5.10.0</junit-platform.version>
-        <mockito.version>5.5.0</mockito.version>
-    </properties>
-```
 
 [JEP 11: Incubator Modules](https://openjdk.org/jeps/11)
 
@@ -204,65 +189,27 @@ real world use; this may lead to it becoming permanent in a future Java SE Platf
 - Preview features are really finished but are waiting for a round of feedback whereas the incubator mechanism has more
   room to iterate over the api several times to get feedback. ~ **_Brian Goetz_**
 
-**_Plugins added:_**
+[JEP-451: Prepare to Disallow the Dynamic Loading of Agents](https://openjdk.org/jeps/451)
 
-**_maven-compiler-plugin_**
+The procedure of loading a Java agent into an already running JVM is called **dynamic load**. The agent is attached
+using the `Java Attach API`.
 
-```
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
-                <configuration>
-                    <source>21</source>
-                    <target>21</target>
-                    <enablePreview>true</enablePreview>
-                    <compilerArgs>--enable-preview</compilerArgs>
-                </configuration>
-            </plugin>
-```
+**Summary**
 
-**_maven-surefire-plugin_**
+Issue warnings when agents are loaded dynamically into a running JVM. These warnings aim to prepare users for a future
+release which **disallows** the **dynamic loading of agents** by default in order to improve integrity by default.
+Serviceability tools that load agents at startup will not cause warnings to be issued in any release.
 
-```
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.1.2</version>
-                <configuration>
-                    <argLine>
-                        --enable-preview
-                        --add-modules jdk.incubator.vector
-                        -XX:+EnableDynamicAgentLoading
-                    </argLine>
-                </configuration>
-            </plugin>
-```
+**Goals**
 
-**_maven-failsafe-plugin_**
+- Prepare for a future release of the JDK that will, by default, disallow the loading of agents into a running JVM.
+- Reassess the balance between serviceability, which involves ad-hoc changes to running code, and integrity, which
+  assumes that running code is not arbitrarily changed.
+- Ensure that the majority of tools — which do not need to load agents dynamically — are unaffected.
+- Align the ability to load agents dynamically with other so-called "superpower" capabilities, such as deep reflection.
 
-```
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <version>3.1.2</version>
-                <configuration>
-                    <argLine>
-                        --enable-preview
-                        --add-modules jdk.incubator.vector
-                        -XX:+EnableDynamicAgentLoading
-                    </argLine>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>integration-test</goal>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-```
+Use the given [pom.xml](https://github.com/backstreetbrogrammer/38_UpgradeToJava21/blob/main/pom.xml) file as a template
+for creating and building Java Maven project in IntelliJ.
 
 From Maven gutter in the right pane of IntelliJ IDE -> click on `Lifecycle -> verify`
 
