@@ -243,6 +243,7 @@ Successful run of the above unit test case will confirm the whole project setup 
 ### Youtube
 
 - [03 - JDK 21, Maven, IntelliJ installation and project setup](https://youtu.be/nJ2mEUrYiS4)
+- [04 - Java 21 Maven project setup in IntelliJ](https://youtu.be/QYfRkyZ3Ql0)
 
 ---
 
