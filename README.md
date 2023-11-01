@@ -247,3 +247,132 @@ Successful run of the above unit test case will confirm the whole project setup 
 
 ---
 
+## Chapter 02. Project Loom
+
+### Virtual Threads
+
+Virtual threads are **lightweight** threads that dramatically reduce the effort of writing, maintaining, and observing
+**high-throughput** concurrent applications.
+
+Before we discuss virtual threads, let's try to understand `blocking / non-blocking / asynchronous IO` and `thread per
+task / thread per request / thread per core model` first.
+
+We will use an example of TCP client-server socket connection:
+
+![SocketAPI](SocketAPI.PNG)
+
+Suppose, we have an Order Management System (OMS) which is working as a TCP server and receiving stock trading orders
+from various clients.
+
+Once the order is received, following processing is done on the `Order` object before it is sent down to algorithmic
+trading engine or directly to exchange:
+
+- Validate the order client's wallet if enough funds
+- Enrich the order with latest market data (best bid / best ask)
+- Update the latest order state to persistence (log or database)
+
+**_Single Threaded Blocking OMS_**
+
+```java
+public class SingleThreadedBlockingOMS {
+
+    private static final AtomicInteger clientCounter = new AtomicInteger();
+
+    public static void main(final String[] args) throws IOException {
+        final int port = 8080;
+        final ServerSocket serverSocket = new ServerSocket(port);
+        System.out.printf("Listening on port %d%n", port);
+        while (!serverSocket.isClosed()) {
+            final Socket socket = serverSocket.accept(); // blocks and socket can never be null
+            handle(socket);
+        }
+    }
+
+    private static void handle(final Socket socket) {
+        System.out.println("\n----------------------------");
+        System.out.printf("Connected to Client-%d on socket=[%s]%n", clientCounter.addAndGet(1), socket);
+        try (
+                socket
+        ) {
+            final Instant start = Instant.now();
+            final var request = new Request(socket);          // parse the request
+            final var order = new Order(request);             // create an Order from the request
+
+            order.validate(ClientWallet.validate(request))    // validate the order client's wallet if enough funds
+                 .enrich(MarketData.enrich(request))          // enrich the order with latest market data
+                 .persist(OrderStatePersist.persist(request)) // update the latest order state to persistence
+                 .sendToDownstream();                         // send the order to downstream
+
+            final long timeElapsed = (Duration.between(start, Instant.now()).toMillis());
+            System.out.printf("%nOrder [%s] sent to downstream in [%d] ms%n%n", order, timeElapsed);
+
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            System.out.printf("Disconnected from Client-%d on socket=[%s]%n", clientCounter.get(), socket);
+            System.out.println("----------------------------\n");
+        }
+    }
+
+}
+```
+
+This server is purely sequential and uses a single thread that does everything.
+
+The thread is first blocked on `accept()`, listening for connections.
+
+After a connection is established, that thread performs all the handling work before it can go back to listen
+and wait for more connections.
+
+In the example code above, each of the following takes around 1 second:
+
+- parse the request
+- create an Order from the request
+- validate the order client's wallet if enough funds
+- enrich the order with latest market data
+- update the latest order state to persistence
+- send the order to downstream
+
+Therefore, it will take around `6 seconds` to complete **one** request and send the order to downstream (if no error).
+
+This also means that if **three** requests arrive at the same time, it will take `6 + 6 + 6 = 18 seconds` to fulfill
+them at `6 seconds` per request sequentially.
+
+**_Thread per client OMS_**
+
+We can do a quick optimization to handle multiple connections in parallel by creating a new **Thread** for each client
+handling.
+
+```
+        while (!serverSocket.isClosed()) {
+            final Socket socket = serverSocket.accept(); // blocks and socket can never be null
+            new Thread(() -> handle(socket)).start();    // create a new thread to handle request
+        }
+```
+
+The connection listening thread that calls `accept()` creates and starts a new **Thread** to handle the connection and
+quickly goes back to accepting more connections.
+
+The `handle()` method is left unchanged, but it's now executed in parallel by multiple threads, each handling their
+connection.
+
+The computation time of the previous example goes from `6 + 6 + 6 = 18 seconds` to `max(6, 6, 6) = 6 seconds`.
+
+Now all requests from separate users are completely independent.
+
+However, there are few caveats:
+
+- Within a single request in the `handle()` method => parsing, validating, persisting and sending the order to
+  downstream is all done in the same thread.
+- Threads are scarce, and there is a limitation imposed on the maximum number of threads which can be created in an
+  OS. Thus, the design doesn't scale well when the number of client connections will increase.
+
+**_Thread per client and Thread per order parsing OMS_**
+
+
+
+
+
+
+
+
