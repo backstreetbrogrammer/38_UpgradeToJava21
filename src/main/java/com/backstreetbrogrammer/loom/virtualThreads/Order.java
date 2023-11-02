@@ -15,15 +15,15 @@ public class Order {
         }
     }
 
-    public Order validate(final Order validatedOrder) {
+    public synchronized Order validate(final Order validatedOrder) {
         return validatedOrder;
     }
 
-    public Order enrich(final Order enrichedOrder) {
+    public synchronized Order enrich(final Order enrichedOrder) {
         return enrichedOrder;
     }
 
-    public Order persist(final Order persistedOrder) {
+    public synchronized Order persist(final Order persistedOrder) {
         return persistedOrder;
     }
 

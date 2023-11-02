@@ -367,12 +367,123 @@ However, there are few caveats:
 - Threads are scarce, and there is a limitation imposed on the maximum number of threads which can be created in an
   OS. Thus, the design doesn't scale well when the number of client connections will increase.
 
-**_Thread per client and Thread per order parsing OMS_**
+**_Thread per client and Thread per order-parsing OMS_**
 
+The first issue above can be easily fixed by using multiple threads for order parsing, validating, persisting and
+sending the order to
+downstream.
 
+```
+            final var request = new Request(socket);          // parse the request
+            final var order = new Order(request);             // create an Order from the request
 
+            final List<Thread> threads = getOrderParsingThreads(order, request);
+            for (final Thread t : threads) {
+                t.start();
+            }
+            for (final Thread t : threads) {
+                t.join();
+            }
 
+            // send the order to downstream
+            order.sendToDownstream();
+```
 
+```
+    private static List<Thread> getOrderParsingThreads(final Order order, final Request request) {
+        // validate the order client's wallet if enough funds
+        final var t1 = new Thread(() -> order.validate(ClientWallet.validate(request)));
+
+        // enrich the order with latest market data
+        final var t2 = new Thread(() -> order.enrich(MarketData.enrich(request)));
+
+        // update the latest order state to persistence
+        final var t3 = new Thread(() -> order.persist(OrderStatePersist.persist(request)));
+
+        return List.of(t1, t2, t3);
+    }
+```
+
+After a request is parsed and an order is created, three helper threads are created: one for validating, one to enrich,
+and one to persist the order.
+
+The three threads are then started and begin to execute their code in parallel.
+
+The `join` method is a blocking method that waits for a thread to terminate.
+
+After all three of the helper threads are terminated, the connection-handling thread sends the fully assembled order
+to downstream, and the time to process a request becomes `1 + 1 + max(1, 1, 1) + 1 = 4 seconds`.
+
+This is a pattern sometimes known as `fork/join` or `scatter/gather`.
+
+However, this design has again few caveats:
+
+- the order needs to be created before the threads are started, and this order object needs to be **thread-safe**,
+  because the `validate`, `enrich`, and `persist` methods are potentially called concurrently (and presumably could each
+  modify the order). Therefore, these methods will need to use proper synchronization (such as locks) to make sure the
+  threads don't interfere with each other in unwanted ways.
+
+```
+    public synchronized Order validate(final Order validatedOrder) {
+        // validation logic...
+        return validatedOrder;
+    }
+
+    public synchronized Order enrich(final Order enrichedOrder) {
+        // enrichment logic...
+        return enrichedOrder;
+    }
+
+    public synchronized Order persist(final Order persistedOrder) {
+        // persistence logic...
+        return persistedOrder;
+    }
+```
+
+- inefficient and uncontrolled thread creation - for `n` simultaneous connections, there could be `4n` threads created
+  and destroyed each time.
+
+We can do a small optimization here that instead of creating `4n` threads, we can use the connection handling thread
+to make it `3n` threads per request.
+
+```
+            final var request = new Request(socket);          // parse the request
+            final var order = new Order(request);             // create an Order from the request
+
+            final List<Thread> threads = getOrderParsingThreads(order, request);
+            for (final Thread t : threads) {
+                t.start();
+            }
+
+            // update the latest order state to persistence
+            order.persist(OrderStatePersist.persist(request));
+
+            for (final Thread t : threads) {
+                t.join();
+            }
+
+            // send the order to downstream
+            order.sendToDownstream();
+```
+
+```
+    private static List<Thread> getOrderParsingThreads(final Order order, final Request request) {
+        // validate the order client's wallet if enough funds
+        final var t1 = new Thread(() -> order.validate(ClientWallet.validate(request)));
+
+        // enrich the order with latest market data
+        final var t2 = new Thread(() -> order.enrich(MarketData.enrich(request)));
+
+        return List.of(t1, t2);
+    }
+```
+
+This design is slightly better - `3n` threads instead of `4n` but it's still unnecessarily wasteful of threads.
+
+A better approach is to **pool** generic worker threads together and rely on them as tasks occur.
+
+**Thread pools** were introduced because threads are expensive; when threads become cheaper, the need for pooling
+decreases.
 
 
 
