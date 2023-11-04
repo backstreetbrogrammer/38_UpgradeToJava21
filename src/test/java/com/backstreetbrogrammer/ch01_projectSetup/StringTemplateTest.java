@@ -11,8 +11,8 @@ public class StringTemplateTest {
     @Test
     @DisplayName("Test String Templates (Preview) [JEP-430]")
     void testStringTemplates() {
-        final String java = "Java 21";
-        final String comment = STR."\{java} is awesome";
+        final var java = "Java 21";
+        final var comment = STR."\{java} is awesome";
         assertEquals("Java 21 is awesome", comment);
     }
 }

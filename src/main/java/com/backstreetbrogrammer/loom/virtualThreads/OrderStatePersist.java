@@ -1,15 +1,10 @@
 package com.backstreetbrogrammer.loom.virtualThreads;
 
-import java.util.concurrent.TimeUnit;
+import static com.backstreetbrogrammer.loom.virtualThreads.WaitUtil.waitForOneSecond;
 
 public class OrderStatePersist {
     public static Order persist(final Request request) {
-        try {
-            TimeUnit.SECONDS.sleep(1L);
-        } catch (final InterruptedException e) {
-            System.err.println(request);
-            throw new RuntimeException(e);
-        }
+        waitForOneSecond(request);
 
         return new Order();
     }

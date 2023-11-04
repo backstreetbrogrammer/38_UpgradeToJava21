@@ -14,11 +14,11 @@ public class ThreadPerClientOMS {
     private static final AtomicInteger clientCounter = new AtomicInteger();
 
     public static void main(final String[] args) throws IOException {
-        final int port = 8080;
-        final ServerSocket serverSocket = new ServerSocket(port);
+        final var port = 8080;
+        final var serverSocket = new ServerSocket(port);
         System.out.printf("Listening on port %d%n", port);
         while (!serverSocket.isClosed()) {
-            final Socket socket = serverSocket.accept(); // blocks and socket can never be null
+            final var socket = serverSocket.accept(); // blocks and socket can never be null
             new Thread(() -> handle(socket, clientCounter.addAndGet(1))).start();    // create a new thread to handle request
         }
     }
@@ -29,7 +29,7 @@ public class ThreadPerClientOMS {
         try (
                 socket
         ) {
-            final Instant start = Instant.now();
+            final var start = Instant.now();
             final var request = new Request(socket);          // parse the request
             final var order = new Order(request);             // create an Order from the request
 
@@ -38,7 +38,7 @@ public class ThreadPerClientOMS {
                  .persist(OrderStatePersist.persist(request)) // update the latest order state to persistence
                  .sendToDownstream();                         // send the order to downstream
 
-            final long timeElapsed = (Duration.between(start, Instant.now()).toMillis());
+            final var timeElapsed = (Duration.between(start, Instant.now()).toMillis());
             System.out.printf("%nOrder [%s] sent to downstream in [%d] ms%n%n", order, timeElapsed);
 
         } catch (final IOException e) {

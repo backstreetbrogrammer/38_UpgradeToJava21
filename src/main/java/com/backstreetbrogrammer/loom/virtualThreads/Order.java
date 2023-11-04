@@ -1,37 +1,32 @@
 package com.backstreetbrogrammer.loom.virtualThreads;
 
-import java.util.concurrent.TimeUnit;
+import static com.backstreetbrogrammer.loom.virtualThreads.WaitUtil.waitForOneSecond;
 
 public class Order {
     public Order() {
     }
 
     public Order(final Request request) {
-        try {
-            TimeUnit.SECONDS.sleep(1L);
-        } catch (final InterruptedException e) {
-            System.err.println(request);
-            throw new RuntimeException(e);
-        }
+        waitForOneSecond(request);
     }
 
     public synchronized Order validate(final Order validatedOrder) {
+        // validation logic...
         return validatedOrder;
     }
 
     public synchronized Order enrich(final Order enrichedOrder) {
+        // enrichment logic...
         return enrichedOrder;
     }
 
     public synchronized Order persist(final Order persistedOrder) {
+        // persistence logic...
         return persistedOrder;
     }
 
-    public void sendToDownstream() {
-        try {
-            TimeUnit.SECONDS.sleep(1L);
-        } catch (final InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+    public synchronized void sendToDownstream() {
+        // connection logic to downstream...
+        waitForOneSecond();
     }
 }

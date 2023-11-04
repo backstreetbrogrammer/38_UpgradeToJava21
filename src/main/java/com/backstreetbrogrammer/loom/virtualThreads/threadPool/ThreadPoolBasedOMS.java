@@ -1,4 +1,4 @@
-package com.backstreetbrogrammer.loom.virtualThreads.multiThreaded;
+package com.backstreetbrogrammer.loom.virtualThreads.threadPool;
 
 import com.backstreetbrogrammer.loom.virtualThreads.*;
 
@@ -7,20 +7,30 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ThreadPerOrderHandlerOptimisedOMS {
+public class ThreadPoolBasedOMS {
 
     private static final AtomicInteger clientCounter = new AtomicInteger();
+    private static final ExecutorService connectionHandlerPool = Executors.newFixedThreadPool(4);
+    private static final ExecutorService orderHandlerPool = Executors.newFixedThreadPool(12);
 
     public static void main(final String[] args) throws IOException {
         final var port = 8080;
         final var serverSocket = new ServerSocket(port);
         System.out.printf("Listening on port %d%n", port);
-        while (!serverSocket.isClosed()) {
-            final var socket = serverSocket.accept(); // blocks and socket can never be null
-            new Thread(() -> handle(socket, clientCounter.addAndGet(1))).start();    // create a new thread to handle request
+
+        try {
+            while (!serverSocket.isClosed()) {
+                final var socket = serverSocket.accept(); // blocks and socket can never be null
+                connectionHandlerPool.execute(() -> handle(socket, clientCounter.addAndGet(1)));
+            }
+        } finally {
+            connectionHandlerPool.close();
+            orderHandlerPool.close();
         }
     }
 
@@ -34,17 +44,24 @@ public class ThreadPerOrderHandlerOptimisedOMS {
             final var request = new Request(socket);          // parse the request
             final var order = new Order(request);             // create an Order from the request
 
-            final var threads = getOrderParsingThreads(order, request);
-            for (final var t : threads) {
-                t.start();
-            }
+            final var latch = new CountDownLatch(3);
 
-            // update the latest order state to persistence
-            order.persist(OrderStatePersist.persist(request));
+            orderHandlerPool.execute(() -> {
+                order.validate(ClientWallet.validate(request));
+                latch.countDown();
+            });
 
-            for (final var t : threads) {
-                t.join();
-            }
+            orderHandlerPool.execute(() -> {
+                order.enrich(MarketData.enrich(request));
+                latch.countDown();
+            });
+
+            orderHandlerPool.execute(() -> {
+                order.persist(OrderStatePersist.persist(request));
+                latch.countDown();
+            });
+
+            latch.await();
 
             // send the order to downstream
             order.sendToDownstream();
@@ -58,16 +75,6 @@ public class ThreadPerOrderHandlerOptimisedOMS {
             System.out.printf("Disconnected from Client-%d on socket=[%s]%n", clientNo, socket);
             System.out.println("----------------------------\n");
         }
-    }
-
-    private static List<Thread> getOrderParsingThreads(final Order order, final Request request) {
-        // validate the order client's wallet if enough funds
-        final var t1 = new Thread(() -> order.validate(ClientWallet.validate(request)));
-
-        // enrich the order with latest market data
-        final var t2 = new Thread(() -> order.enrich(MarketData.enrich(request)));
-
-        return List.of(t1, t2);
     }
 
 }

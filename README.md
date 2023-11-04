@@ -41,6 +41,7 @@ Java 21 has the following **15** features:
     - [Project Setup](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#project-setup)
 2. Project Loom
     - Virtual Threads
+        - Designing a simple TCP-based Order Management System (OMS) server
     - Scoped Values
     - Structured Concurrency
 3. Project Amber
@@ -229,8 +230,8 @@ public class StringTemplateTest {
     @Test
     @DisplayName("Test String Templates (Preview) [JEP-430]")
     void testStringTemplates() {
-        final String java = "Java 21";
-        final String comment = STR."\{java} is awesome";
+        final var java = "Java 21";
+        final var comment = STR."\{java} is awesome";
         assertEquals("Java 21 is awesome", comment);
     }
 }
@@ -261,11 +262,49 @@ We will use an example of TCP client-server socket connection:
 
 ![SocketAPI](SocketAPI.PNG)
 
+```java
+public class SocketAPIDemoServer {
+
+    public static void main(final String[] args) throws IOException {
+        final var serverSocket = new ServerSocket(8080);
+        while (!serverSocket.isClosed()) {
+            final Socket socket = serverSocket.accept(); // blocks and socket can never be null
+            handle(socket);
+        }
+    }
+
+    private static void handle(final Socket socket) throws IOException {
+        System.out.printf("Connected to %s%n", socket);
+        try (
+                socket;
+                final InputStream in = socket.getInputStream();
+                final OutputStream out = socket.getOutputStream()
+        ) {
+            // default buffer size is 8192
+            // in.transferTo(out);
+
+            int data;
+            while ((data = in.read()) != -1) { // read one byte at a time and -1 means EOF
+                out.write(transformAndEcho(data));
+            }
+        } finally {
+            System.out.printf("Disconnected from %s%n", socket);
+        }
+    }
+
+    private static int transformAndEcho(final int data) {
+        return Character.isLetter(data) ? data ^ ' ' : data;
+    }
+}
+```
+
+#### Designing a simple TCP-based Order Management System (OMS) server
+
 Suppose, we have an Order Management System (OMS) which is working as a TCP server and receiving stock trading orders
 from various clients.
 
 Once the order is received, following processing is done on the `Order` object before it is sent down to algorithmic
-trading engine or directly to exchange:
+trading engine or directly to exchange (DMA):
 
 - Validate the order client's wallet if enough funds
 - Enrich the order with latest market data (best bid / best ask)
@@ -279,11 +318,11 @@ public class SingleThreadedBlockingOMS {
     private static final AtomicInteger clientCounter = new AtomicInteger();
 
     public static void main(final String[] args) throws IOException {
-        final int port = 8080;
-        final ServerSocket serverSocket = new ServerSocket(port);
+        final var port = 8080;
+        final var serverSocket = new ServerSocket(port);
         System.out.printf("Listening on port %d%n", port);
         while (!serverSocket.isClosed()) {
-            final Socket socket = serverSocket.accept(); // blocks and socket can never be null
+            final var socket = serverSocket.accept(); // blocks and socket can never be null
             handle(socket);
         }
     }
@@ -294,7 +333,7 @@ public class SingleThreadedBlockingOMS {
         try (
                 socket
         ) {
-            final Instant start = Instant.now();
+            final var start = Instant.now();
             final var request = new Request(socket);          // parse the request
             final var order = new Order(request);             // create an Order from the request
 
@@ -303,7 +342,7 @@ public class SingleThreadedBlockingOMS {
                  .persist(OrderStatePersist.persist(request)) // update the latest order state to persistence
                  .sendToDownstream();                         // send the order to downstream
 
-            final long timeElapsed = (Duration.between(start, Instant.now()).toMillis());
+            final var timeElapsed = (Duration.between(start, Instant.now()).toMillis());
             System.out.printf("%nOrder [%s] sent to downstream in [%d] ms%n%n", order, timeElapsed);
 
         } catch (final IOException e) {
@@ -377,11 +416,11 @@ downstream.
             final var request = new Request(socket);          // parse the request
             final var order = new Order(request);             // create an Order from the request
 
-            final List<Thread> threads = getOrderParsingThreads(order, request);
-            for (final Thread t : threads) {
+            final var threads = getOrderParsingThreads(order, request);
+            for (final var t : threads) {
                 t.start();
             }
-            for (final Thread t : threads) {
+            for (final var t : threads) {
                 t.join();
             }
 
@@ -438,6 +477,11 @@ However, this design has again few caveats:
         // persistence logic...
         return persistedOrder;
     }
+
+    public synchronized void sendToDownstream() {
+        // connection logic to downstream...
+        waitForOneSecond();
+    }
 ```
 
 - inefficient and uncontrolled thread creation - for `n` simultaneous connections, there could be `4n` threads created
@@ -450,15 +494,15 @@ to make it `3n` threads per request.
             final var request = new Request(socket);          // parse the request
             final var order = new Order(request);             // create an Order from the request
 
-            final List<Thread> threads = getOrderParsingThreads(order, request);
-            for (final Thread t : threads) {
+            final var threads = getOrderParsingThreads(order, request);
+            for (final var t : threads) {
                 t.start();
             }
 
             // update the latest order state to persistence
             order.persist(OrderStatePersist.persist(request));
 
-            for (final Thread t : threads) {
+            for (final var t : threads) {
                 t.join();
             }
 
@@ -480,10 +524,152 @@ to make it `3n` threads per request.
 
 This design is slightly better - `3n` threads instead of `4n` but it's still unnecessarily wasteful of threads.
 
+And, the time to process a request is still same: `1 + 1 + max(1, 1, 1) + 1 = 4 seconds`.
+
 A better approach is to **pool** generic worker threads together and rely on them as tasks occur.
 
 **Thread pools** were introduced because threads are expensive; when threads become cheaper, the need for pooling
 decreases.
 
+**_Thread Pool Based OMS_**
+
+The **Executor Pattern** aims to fix the above-mentioned issues:
+
+- by creating pools of ready-to-use threads
+- passing task to this pool of threads that will execute it
+
+![Executor Service](ExecutorService.PNG)
+
+The threads in this pool will be kept alive as long as this pool is alive.
+
+It means that the single thread will execute the submitted task => once the task finishes, the thread will return to the
+pool and wait for a new task to be submitted for execution.
+
+As compared to `Runnable` pattern, `Executor` pattern does NOT create a new thread.
+
+However, the behavior is the same: both calls return immediately, and the task is executed in **another** thread.
+
+We will create two thread pools in our OMS:
+
+```
+    private static final ExecutorService connectionHandlerPool = Executors.newFixedThreadPool(4);
+    private static final ExecutorService orderHandlerPool = Executors.newFixedThreadPool(12);
+```
+
+Our client handler code will look like this:
+
+```
+        try {
+            while (!serverSocket.isClosed()) {
+                final var socket = serverSocket.accept(); // blocks and socket can never be null
+                connectionHandlerPool.execute(() -> handle(socket));
+            }
+        } finally {
+            connectionHandlerPool.close();
+            orderHandlerPool.close();
+        }
+```
+
+And, the order handler code will be changed to use the second pool:
+
+```
+            final var request = new Request(socket);          // parse the request
+            final var order = new Order(request);             // create an Order from the request
+
+            final var latch = new CountDownLatch(3);
+
+            orderHandlerPool.execute(() -> {
+                order.validate(ClientWallet.validate(request));
+                latch.countDown();
+            });
+
+            orderHandlerPool.execute(() -> {
+                order.enrich(MarketData.enrich(request));
+                latch.countDown();
+            });
+
+            orderHandlerPool.execute(() -> {
+                order.persist(OrderStatePersist.persist(request));
+                latch.countDown();
+            });
+
+            latch.await();
+
+            // send the order to downstream
+            order.sendToDownstream();
+```
+
+This is a better design as now we have a limited number of threads as guaranteed in the thread pool size.
+
+However, the time to process a request is still same: `1 + 1 + max(1, 1, 1) + 1 = 4 seconds`.
+
+Few of the caveats here are:
+
+- order is a shared object amongst all the threads and needs to be synchronized
+- code is more complex and using helper objects like `CountDownLatch`
+
+The OMS servers we have created so far are very imperative in style:
+
+- Threads do things
+- they act on a shared object, and
+- they modify it
+
+A better approach is to use **futures**.
+
+**_Futures Based OMS_**
+
+Futures are a standard Java abstraction that allows concurrent code to shift to a more **functional** flavor in which
+threads run functions and produce values, while combining the synchronization capabilities of the **latch** mechanism
+used earlier.
+
+Essentially, a **future** represents an **asynchronously** running function and offers mechanisms for threads to wait
+for the output of the function.
+
+Running a blocking code in another thread is a way to avoid blocking the main thread of our application.
+
+```
+        ExecutorService service = ...;
+        HTTPClient client = ...;
+        Future<String> future =
+                service.submit(() – >
+                        client.get("https://github.com/backstreetbrogrammer/data"));
+        // do some other stuff
+        String response = future.get();
+```
+
+The call to `get()` is still a **blocking** call, but blocks another thread and not the `main` thread. Our application
+thread is free to do something else.
+
+We can get the response through this `future` object By calling `future.get()`, which is a blocking call.
+
+Java 8's Concurrent API introduced `CompletableFuture`, a valuable tool for simplifying asynchronous and non-blocking
+programming.
+
+The `CompletableFuture` class implements `CompletionStage` interface and the `Future` interface.
+
+Now, our order handling logic completely changes like this:
+
+```
+            final var request = new Request(socket);
+
+            final var orderValidateFuture =
+                    CompletableFuture.supplyAsync(() -> ClientWallet.validate(request), orderHandlerPool);
+            final var orderEnrichFuture =
+                    CompletableFuture.supplyAsync(() -> MarketData.enrich(request), orderHandlerPool);
+            final var orderPersistFuture =
+                    CompletableFuture.supplyAsync(() -> OrderStatePersist.persist(request), orderHandlerPool);
+
+            new Order(request)
+                    .validate(orderValidateFuture.join())
+                    .enrich(orderEnrichFuture.join())
+                    .persist(orderPersistFuture.join())
+                    .sendToDownstream();
+```
+
+This is much better and succinct code with no need to handle `InterruptedException` and no need to use `CountDownLatch`.
+
+The most important improvement is that `Order` object does NOT need to be **synchronized** anymore!
+
+Moreover, the time to process a request is better: `1 + max(1, 1, 1) + 1 = 3 seconds`.
 
 
