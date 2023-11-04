@@ -666,10 +666,133 @@ Now, our order handling logic completely changes like this:
                     .sendToDownstream();
 ```
 
-This is much better and succinct code with no need to handle `InterruptedException` and no need to use `CountDownLatch`.
+The implementation of the server is fairly straightforward:
 
-The most important improvement is that `Order` object does NOT need to be **synchronized** anymore!
+Simply create a **future** for any part of the computation that needs to run **asynchronously**.
 
-Moreover, the time to process a request is better: `1 + max(1, 1, 1) + 1 = 3 seconds`.
+This approach pools threads for reuse, avoids the **latch** (futures implement their own **synchronization**), and,
+importantly, the **order** is created and populated by a **single** thread and does not need to be **thread-safe**
+anymore.
+
+The new order object is created by the connection-handling thread **in parallel** with the validation, enrichment and
+persistence tasks (which no longer need the order).
+
+Thus, the time to process a request and send the order to downstream goes down from
+`1 + 1 + max(1, 1, 1) + 1 = 4 seconds` to `1 + max(1, 1, 1) + 1 = 3 seconds`.
+
+However, the fact that threads are **blocked** on the `join` method while waiting for futures to be completed remains
+problematic in two ways:
+
+- This **blocking** invites the possibility of **deadlocks**. The issue was addressed here by using **two** separate
+  thread pools. On larger, more complex systems, however, the problem can become quite tricky. **Multiplying pools** or
+  **increasing pool sizes** to guarantee the absence of deadlocks tends to result in a large number of threads which,
+  when they are not blocked, lead to a suboptimal usage of computing resources.
+- Blocking and unblocking threads, even in the best of scenarios, has a non-negligible cost. The actual **parking** and
+  **unparking** of threads by the operating system take time. Furthermore, parked threads tend to see their data in
+  processor-level caches overwritten by other threads, resulting in cache misses when the threads resume execution.
+  Accordingly, techniques were devised to minimize thread blocking, ideally, to avoid it entirely.
+
+**_Futures with Callbacks OMS_**
+
+One of the oldest strategies is the idea of a **callback**.
+
+Instead of waiting for the result of a future, which requires **blocking**, the developer specifies, as a **callback**,
+the computation that will use this result.
+
+The server can be rewritten using callbacks:
+
+```
+            final var request = new Request(socket);
+
+            final var orderValidateFuture =
+                    CompletableFuture.supplyAsync(() -> ClientWallet.validate(request), threadPool);
+            final var orderEnrichFuture =
+                    CompletableFuture.supplyAsync(() -> MarketData.enrich(request), threadPool);
+            final var orderPersistFuture =
+                    CompletableFuture.supplyAsync(() -> OrderStatePersist.persist(request), threadPool);
+
+            final var order = new Order(request);
+            
+            orderValidateFuture.thenAccept(
+                    validatedOrder ->
+                            orderEnrichFuture.thenAccept(
+                                    enrichedOrder ->
+                                            orderPersistFuture.thenAccept(
+                                                    persistedOrder ->
+                                                            order.validate(validatedOrder)
+                                                                 .enrich(enrichedOrder)
+                                                                 .persist(persistedOrder)
+                                                                 .sendToDownstream())));
+```
+
+Time taken is same as before: `1 + max(1, 1, 1) + 1 = 3 seconds`.
+
+The future `thenAccept` method takes as its argument the code that will **consume** the output of the future.
+
+Note that the invocation of `thenAccept` only registers this code for **later execution**; it does not wait for the
+future to be completed and, thus, it takes very little time.
+
+The actual object building will run later, in the thread pool, after the validation, enrichment and persistence tasks
+are done. As a result, a single request is processed in one second as before.
+
+Threads are never blocked in this server, and a single, reasonably sized pool can be used.
+
+The code above is **free from deadlocks** for any pool size.
+
+Indeed, setting `threadPool` as a **single-thread pool** would result in a sequential server, but would not cause any
+deadlock.
+
+However, still there is one caveat here:
+
+- Callbacks are notoriously hard to write and even harder to debug.
+
+In the simple callback illustration above, `thenAccept` calls are nested **three levels** deep.
+
+**_Futures with composition OMS_**
+
+Fortunately, modern futures offer other mechanisms to process their value in a non-blocking fashion.
+
+In Java, a `thenCombine` method can be used to **combine** the results of two futures using a two-argument function, as
+shown below:
+
+```
+            final var request = new Request(socket);
+
+            final var orderValidateFuture =
+                    CompletableFuture.supplyAsync(() -> ClientWallet.validate(request), threadPool);
+            final var orderEnrichFuture =
+                    CompletableFuture.supplyAsync(() -> MarketData.enrich(request), threadPool);
+            final var orderPersistFuture =
+                    CompletableFuture.supplyAsync(() -> OrderStatePersist.persist(request), threadPool);
+
+            CompletableFuture.completedFuture(new Order(request))
+                             .thenCombine(orderValidateFuture, Order::validate)
+                             .thenCombine(orderEnrichFuture, Order::enrich)
+                             .thenCombine(orderPersistFuture, Order::persist)
+                             .thenAccept(Order::sendToDownstream);
+```
+
+Time taken is same as before: `1 + max(1, 1, 1) + 1 = 3 seconds`.
+
+The handling thread creates a new order, as before, but wraps it in a **future** so that `thenCombine` can be called
+for **validation**, and then it calls again with the **enrichment** and **persistence** tasks.
+
+Finally, a **callback** `thenAccept` is used to send the order to downstream.
+
+None of this code is **blocking**.
+
+Pool threads jump from validation, enrichment and persistence tasks to order building and order sending, performing
+tasks as they become available, even across separate requests.
+
+In this case, the only actual processing that the connection-handling thread performs is the building of a base order.
+
+**_Virtual Threads based OMS_**
+
+Java's virtual threads are lightweight threads that are created and scheduled by the JVM itself. That's in contrast to
+standard threads, which are created and scheduled by the operating system (OS).
+
+Virtual threads run by mounting an actual OS thread. When blocked, they unmount their OS thread, leaving it free to run
+the code of other virtual threads.
+
 
 

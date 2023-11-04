@@ -2,30 +2,30 @@ package com.backstreetbrogrammer.loom.virtualThreads;
 
 import static com.backstreetbrogrammer.loom.virtualThreads.WaitUtil.waitForOneSecond;
 
-public class Order {
-    public Order() {
+public class OrderSync {
+    public OrderSync() {
     }
 
-    public Order(final Request request) {
+    public OrderSync(final Request request) {
         waitForOneSecond(request);
     }
 
-    public Order validate(final Order validatedOrder) {
+    public synchronized OrderSync validate(final OrderSync validatedOrder) {
         // validation logic...
         return validatedOrder;
     }
 
-    public Order enrich(final Order enrichedOrder) {
+    public synchronized OrderSync enrich(final OrderSync enrichedOrder) {
         // enrichment logic...
         return enrichedOrder;
     }
 
-    public Order persist(final Order persistedOrder) {
+    public synchronized OrderSync persist(final OrderSync persistedOrder) {
         // persistence logic...
         return persistedOrder;
     }
 
-    public void sendToDownstream() {
+    public synchronized void sendToDownstream() {
         // connection logic to downstream...
         waitForOneSecond();
     }

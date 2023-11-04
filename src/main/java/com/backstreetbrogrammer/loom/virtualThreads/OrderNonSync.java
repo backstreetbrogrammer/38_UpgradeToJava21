@@ -2,25 +2,25 @@ package com.backstreetbrogrammer.loom.virtualThreads;
 
 import static com.backstreetbrogrammer.loom.virtualThreads.WaitUtil.waitForOneSecond;
 
-public class Order {
-    public Order() {
+public class OrderNonSync {
+    public OrderNonSync() {
     }
 
-    public Order(final Request request) {
+    public OrderNonSync(final Request request) {
         waitForOneSecond(request);
     }
 
-    public Order validate(final Order validatedOrder) {
+    public OrderNonSync validate(final OrderNonSync validatedOrder) {
         // validation logic...
         return validatedOrder;
     }
 
-    public Order enrich(final Order enrichedOrder) {
+    public OrderNonSync enrich(final OrderNonSync enrichedOrder) {
         // enrichment logic...
         return enrichedOrder;
     }
 
-    public Order persist(final Order persistedOrder) {
+    public OrderNonSync persist(final OrderNonSync persistedOrder) {
         // persistence logic...
         return persistedOrder;
     }
