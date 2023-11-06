@@ -1,6 +1,6 @@
-package com.backstreetbrogrammer.loom.virtualThreads.futures;
+package com.backstreetbrogrammer.loom.futures;
 
-import com.backstreetbrogrammer.loom.virtualThreads.*;
+import com.backstreetbrogrammer.loom.model.*;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -12,10 +12,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class FuturesWithCallbacksOMS {
+public class FuturesBasedOMS {
 
     private static final AtomicInteger clientCounter = new AtomicInteger();
-    private static final ExecutorService threadPool = Executors.newFixedThreadPool(12);
+    private static final ExecutorService connectionHandlerPool = Executors.newFixedThreadPool(4);
+    private static final ExecutorService orderHandlerPool = Executors.newFixedThreadPool(12);
 
     public static void main(final String[] args) throws IOException {
         final var port = 8080;
@@ -25,10 +26,11 @@ public class FuturesWithCallbacksOMS {
         try {
             while (!serverSocket.isClosed()) {
                 final var socket = serverSocket.accept(); // blocks and socket can never be null
-                threadPool.execute(() -> handle(socket, clientCounter.addAndGet(1)));
+                connectionHandlerPool.execute(() -> handle(socket, clientCounter.addAndGet(1)));
             }
         } finally {
-            threadPool.close();
+            connectionHandlerPool.close();
+            orderHandlerPool.close();
         }
     }
 
@@ -42,27 +44,20 @@ public class FuturesWithCallbacksOMS {
             final var request = new Request(socket);
 
             final var orderValidateFuture =
-                    CompletableFuture.supplyAsync(() -> ClientWallet.validate(request), threadPool);
+                    CompletableFuture.supplyAsync(() -> ClientWallet.validate(request), orderHandlerPool);
             final var orderEnrichFuture =
-                    CompletableFuture.supplyAsync(() -> MarketData.enrich(request), threadPool);
+                    CompletableFuture.supplyAsync(() -> MarketData.enrich(request), orderHandlerPool);
             final var orderPersistFuture =
-                    CompletableFuture.supplyAsync(() -> OrderStatePersist.persist(request), threadPool);
+                    CompletableFuture.supplyAsync(() -> OrderStatePersist.persist(request), orderHandlerPool);
 
-            final var order = new Order(request);
-
-            orderValidateFuture.thenAccept(
-                    validatedOrder ->
-                            orderEnrichFuture.thenAccept(
-                                    enrichedOrder ->
-                                            orderPersistFuture.thenAccept(
-                                                    persistedOrder ->
-                                                            order.validate(validatedOrder)
-                                                                 .enrich(enrichedOrder)
-                                                                 .persist(persistedOrder)
-                                                                 .sendToDownstream())));
+            new Order(request)
+                    .validate(orderValidateFuture.join())
+                    .enrich(orderEnrichFuture.join())
+                    .persist(orderPersistFuture.join())
+                    .sendToDownstream();
 
             final var timeElapsed = (Duration.between(start, Instant.now()).toMillis());
-            System.out.printf("%nOrder [%s] sent to downstream in [%d] ms%n%n", order, timeElapsed);
+            System.out.printf("%nOrder sent to downstream in [%d] ms%n%n", timeElapsed);
 
         } catch (final IOException e) {
             throw new RuntimeException(e);

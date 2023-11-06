@@ -1,4 +1,4 @@
-package com.backstreetbrogrammer.loom.virtualThreads;
+package com.backstreetbrogrammer.loom.model;
 
 import java.net.Socket;
 import java.util.concurrent.TimeUnit;

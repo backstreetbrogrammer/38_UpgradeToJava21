@@ -1,6 +1,6 @@
-package com.backstreetbrogrammer.loom.virtualThreads.singleThreadedBlocking;
+package com.backstreetbrogrammer.loom.multiThreaded;
 
-import com.backstreetbrogrammer.loom.virtualThreads.*;
+import com.backstreetbrogrammer.loom.model.*;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -9,7 +9,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class SingleThreadedBlockingOMS {
+public class ThreadPerClientOMS {
 
     private static final AtomicInteger clientCounter = new AtomicInteger();
 
@@ -19,13 +19,13 @@ public class SingleThreadedBlockingOMS {
         System.out.printf("Listening on port %d%n", port);
         while (!serverSocket.isClosed()) {
             final var socket = serverSocket.accept(); // blocks and socket can never be null
-            handle(socket);
+            new Thread(() -> handle(socket, clientCounter.addAndGet(1))).start();    // create a new thread to handle request
         }
     }
 
-    private static void handle(final Socket socket) {
+    private static void handle(final Socket socket, final int clientNo) {
         System.out.println("\n----------------------------");
-        System.out.printf("Connected to Client-%d on socket=[%s]%n", clientCounter.addAndGet(1), socket);
+        System.out.printf("Connected to Client-%d on socket=[%s]%n", clientNo, socket);
         try (
                 socket
         ) {
@@ -44,7 +44,7 @@ public class SingleThreadedBlockingOMS {
         } catch (final IOException e) {
             throw new RuntimeException(e);
         } finally {
-            System.out.printf("Disconnected from Client-%d on socket=[%s]%n", clientCounter.get(), socket);
+            System.out.printf("Disconnected from Client-%d on socket=[%s]%n", clientNo, socket);
             System.out.println("----------------------------\n");
         }
     }

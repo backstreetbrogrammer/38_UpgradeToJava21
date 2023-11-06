@@ -1,4 +1,4 @@
-package com.backstreetbrogrammer.loom.virtualThreads.singleThreadedBlocking;
+package com.backstreetbrogrammer.loom.singleThreadedBlocking;
 
 import java.io.IOException;
 import java.io.InputStream;

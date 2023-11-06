@@ -1,6 +1,6 @@
-package com.backstreetbrogrammer.loom.virtualThreads.futures;
+package com.backstreetbrogrammer.loom.futures;
 
-import com.backstreetbrogrammer.loom.virtualThreads.*;
+import com.backstreetbrogrammer.loom.model.*;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -12,11 +12,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class FuturesAsynchronousOMS {
+public class FuturesWithCompositionOMS {
 
     private static final AtomicInteger clientCounter = new AtomicInteger();
-    private static final ExecutorService connectionHandlerPool = Executors.newSingleThreadExecutor();
-    private static final ExecutorService orderHandlerPool = Executors.newFixedThreadPool(12);
+    private static final ExecutorService threadPool = Executors.newFixedThreadPool(12);
 
     public static void main(final String[] args) throws IOException {
         final var port = 8080;
@@ -26,11 +25,10 @@ public class FuturesAsynchronousOMS {
         try {
             while (!serverSocket.isClosed()) {
                 final var socket = serverSocket.accept(); // blocks and socket can never be null
-                connectionHandlerPool.execute(() -> handle(socket, clientCounter.addAndGet(1)));
+                threadPool.execute(() -> handle(socket, clientCounter.addAndGet(1)));
             }
         } finally {
-            connectionHandlerPool.close();
-            orderHandlerPool.close();
+            threadPool.close();
         }
     }
 
@@ -41,20 +39,20 @@ public class FuturesAsynchronousOMS {
                 socket
         ) {
             final var start = Instant.now();
-            final var futureRequest = CompletableFuture.supplyAsync(() -> new Request(socket), orderHandlerPool);
+            final var request = new Request(socket);
 
             final var orderValidateFuture =
-                    futureRequest.thenApplyAsync(ClientWallet::validate, orderHandlerPool);
+                    CompletableFuture.supplyAsync(() -> ClientWallet.validate(request), threadPool);
             final var orderEnrichFuture =
-                    futureRequest.thenApplyAsync(MarketData::enrich, orderHandlerPool);
+                    CompletableFuture.supplyAsync(() -> MarketData.enrich(request), threadPool);
             final var orderPersistFuture =
-                    futureRequest.thenApplyAsync(OrderStatePersist::persist, orderHandlerPool);
+                    CompletableFuture.supplyAsync(() -> OrderStatePersist.persist(request), threadPool);
 
-            futureRequest.thenApplyAsync(Order::new, orderHandlerPool)
-                         .thenCombine(orderValidateFuture, Order::validate)
-                         .thenCombine(orderEnrichFuture, Order::enrich)
-                         .thenCombine(orderPersistFuture, Order::persist)
-                         .thenAccept(Order::sendToDownstream);
+            CompletableFuture.completedFuture(new Order(request))
+                             .thenCombine(orderValidateFuture, Order::validate)
+                             .thenCombine(orderEnrichFuture, Order::enrich)
+                             .thenCombine(orderPersistFuture, Order::persist)
+                             .thenAccept(Order::sendToDownstream);
 
             final var timeElapsed = (Duration.between(start, Instant.now()).toMillis());
             System.out.printf("%nOrder sent to downstream in [%d] ms%n%n", timeElapsed);

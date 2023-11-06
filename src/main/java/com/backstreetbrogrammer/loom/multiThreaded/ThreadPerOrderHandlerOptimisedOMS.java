@@ -1,6 +1,6 @@
-package com.backstreetbrogrammer.loom.virtualThreads.multiThreaded;
+package com.backstreetbrogrammer.loom.multiThreaded;
 
-import com.backstreetbrogrammer.loom.virtualThreads.*;
+import com.backstreetbrogrammer.loom.model.*;
 
 import java.io.IOException;
 import java.net.ServerSocket;

@@ -1,13 +1,13 @@
-package com.backstreetbrogrammer.loom.virtualThreads;
+package com.backstreetbrogrammer.loom.model;
 
-import static com.backstreetbrogrammer.loom.virtualThreads.WaitUtil.waitForOneSecond;
+import static com.backstreetbrogrammer.loom.util.WaitUtil.waitForGivenSeconds;
 
 public class Order {
     public Order() {
     }
 
     public Order(final Request request) {
-        waitForOneSecond(request);
+        waitForGivenSeconds(1L, request);
     }
 
     public Order validate(final Order validatedOrder) {
@@ -27,6 +27,6 @@ public class Order {
 
     public void sendToDownstream() {
         // connection logic to downstream...
-        waitForOneSecond();
+        waitForGivenSeconds(1L);
     }
 }

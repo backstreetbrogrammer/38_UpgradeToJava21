@@ -794,5 +794,119 @@ standard threads, which are created and scheduled by the operating system (OS).
 Virtual threads run by mounting an actual OS thread. When blocked, they unmount their OS thread, leaving it free to run
 the code of other virtual threads.
 
+```java
+public class VirtualThreadPerOrderHandlerOMS {
+
+    private static final AtomicInteger clientCounter = new AtomicInteger();
+
+    public static void main(final String[] args) throws IOException {
+        final var port = 8080;
+        final var serverSocket = new ServerSocket(port);
+        System.out.printf("Listening on port %d%n", port);
+        while (!serverSocket.isClosed()) {
+            final var socket = serverSocket.accept(); // blocks and socket can never be null
+            Thread.startVirtualThread(
+                    () -> handle(socket, clientCounter.addAndGet(1))); // create a new virtual thread to handle request
+        }
+    }
+
+    private static void handle(final Socket socket, final int clientNo) {
+        System.out.println("\n----------------------------");
+        System.out.printf("Connected to Client-%d on socket=[%s]%n", clientNo, socket);
+        try (
+                socket
+        ) {
+            final var start = Instant.now();
+            final var request = new Request(socket);          // parse the request
+            final var order = new Order(request);             // create an Order from the request
+
+            final var virtualThreads = startOrderParsingVirtualThreads(order, request);
+
+            for (final var t : virtualThreads) {
+                t.join();
+            }
+
+            // send the order to downstream
+            order.sendToDownstream();
+
+            final var timeElapsed = (Duration.between(start, Instant.now()).toMillis());
+            System.out.printf("%nOrder [%s] sent to downstream in [%d] ms%n%n", order, timeElapsed);
+
+        } catch (final IOException | InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            System.out.printf("Disconnected from Client-%d on socket=[%s]%n", clientNo, socket);
+            System.out.println("----------------------------\n");
+        }
+    }
+
+    private static List<Thread> startOrderParsingVirtualThreads(final Order order, final Request request) {
+        // validate the order client's wallet if enough funds
+        final var t1 = Thread.startVirtualThread(() -> order.validate(ClientWallet.validate(request)));
+
+        // enrich the order with latest market data
+        final var t2 = Thread.startVirtualThread(() -> order.enrich(MarketData.enrich(request)));
+
+        // update the latest order state to persistence
+        final var t3 = Thread.startVirtualThread(() -> order.persist(OrderStatePersist.persist(request)));
+
+        return List.of(t1, t2, t3);
+    }
+
+}
+```
+
+Time taken to process a request is: `1 + 1 + max(1, 1, 1) + 1 = 4 seconds`.
+
+The main difference with using traditional threads is that virtual threads do NOT entail any **OS-level blocking**.
+
+When a virtual thread invokes `join` on a thread that is still running, it does not block the underlying OS thread,
+which continues to run other virtual threads.
+
+In effect, the OS threads jump from code to code when using higher-order methods on **futures**, and they do so in a
+familiar programming style.
+
+Because they are lightweight, virtual threads are also cheap to create and don't need to be pooled.
+
+This also has a big advantage that if there are many client requests being received at the same time - virtual
+threads will be able to handle it proving much better **throughput**.
+
+However, there is one drawback:
+
+- Order must be **thread-safe** again and needs to be constructed first, before the validation, enrichment and
+  persistence tasks are started.
+
+This can be avoided by bringing back **futures** but having the futures run by **virtual threads**.
+
+**_Virtual Threads with Futures OMS_**
+
+```
+            final var request = new Request(socket);
+
+            final var orderValidateFuture = new CompletableFuture<Order>();
+            final var orderEnrichFuture = new CompletableFuture<Order>();
+            final var orderPersistFuture = new CompletableFuture<Order>();
+
+            Thread.startVirtualThread(() -> orderValidateFuture.complete(ClientWallet.validate(request)));
+            Thread.startVirtualThread(() -> orderEnrichFuture.complete(MarketData.enrich(request)));
+            Thread.startVirtualThread(() -> orderPersistFuture.complete(OrderStatePersist.persist(request)));
+
+            new Order(request)
+                    .validate(orderValidateFuture.join())
+                    .enrich(orderEnrichFuture.join())
+                    .persist(orderPersistFuture.join())
+                    .sendToDownstream();
+```
+
+Time taken to process a request is: `1 + max(1, 1, 1) + 1 = 3 seconds`.
+
+The order is now created while the validation, enrichment and persistence tasks are running, and it doesn't need to be
+thread-safe.
+
+The key difference with using previous **futures based OMS** is that `join` is now implemented without blocking an OS
+thread.
+
+Performance-wise, both versions are equivalent: OS threads are reused by pooling and are never blocked but they are
+written in two very different styles, one more traditional (imperative) and the other more functional.
 
 
