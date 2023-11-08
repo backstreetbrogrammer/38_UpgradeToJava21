@@ -39,9 +39,11 @@ Java 21 has the following **15** features:
     - [Maven installation](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#maven-installation)
     - [IntelliJ installation](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#intellij-installation)
     - [Project Setup](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#project-setup)
-2. Project Loom
-    - Virtual Threads
-        - Designing a simple TCP-based Order Management System (OMS) server
+2. [Project Loom](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#chapter-02-project-loom)
+    - [Virtual Threads](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#virtual-threads)
+        - Limitation of current server applications
+        - Blocking, Non-Blocking, Asynchronous Server
+        - Virtual Threads - Deep Dive
     - Scoped Values
     - Structured Concurrency
 3. Project Amber
@@ -128,9 +130,9 @@ Based on the OS, we can download IntelliJ **Community** Edition:
 
 [Windows IntelliJ](https://www.jetbrains.com/idea/download/download-thanks.html?platform=windows&code=IIC)
 
-Please note that latest IntelliJ IDEA **2023.2.2** version already supports JDK 21.
+Please note that the latest IntelliJ IDEA **2023.2.2** version already supports JDK 21.
 
-If IntelliJ was already installed before, we can just Update it to latest version from:
+If IntelliJ was already installed before, we can just Update it to the latest version from:
 
 ```
 Help -> Check for Updates...
@@ -253,7 +255,63 @@ Successful run of the above unit test case will confirm the whole project setup 
 ### Virtual Threads
 
 Virtual threads are **lightweight** threads that dramatically reduce the effort of writing, maintaining, and observing
-**high-throughput** concurrent applications.
+**high-throughput concurrent** applications.
+
+**Goals**
+
+- Enable server applications written in the simple **thread-per-request** style to scale with near-optimal hardware
+  utilization
+- Enable existing code that uses the `java.lang.Thread` API to adopt virtual threads with minimal change
+- Enable easy **troubleshooting**, **debugging**, and **profiling** of virtual threads with existing JDK tools
+
+#### Limitation of current server applications
+
+Server applications generally handle concurrent user requests that are independent of each other, so it makes sense for
+an application to handle a request by dedicating a thread to that request for its entire duration.
+
+This **thread-per-request** style is easy to understand, easy to program, and easy to debug and profile because it uses
+the platform's unit of concurrency to represent the application's unit of concurrency.
+
+The scalability of server applications is governed by **_Little's Law_**, which relates **latency**, **concurrency**,
+and **throughput**:
+
+For a given request-processing duration (i.e., **latency**), the number of requests an application handles at the same
+time (i.e., **concurrency**) must grow in proportion to the rate of arrival (i.e., **throughput**).
+
+For example, suppose an application with an average **latency** of `50ms` achieves a **throughput** of
+`200 requests per second` by processing `10 requests` **concurrently**.
+
+```
+1 request takes 50 ms
+2 requests takes 50*2=100 ms
+20 requests takes 50*20=1000 ms or 1 second
+
+Thus, to increase throughput from 20 requests per second to 200 requests per second, we need to process 10 requests 
+concurrently.
+```
+
+In order for that application to scale to a **throughput** of `2000 requests per second`, it will need to process
+`100 requests` **concurrently**.
+
+If each request is handled in a thread for the request's duration then, for the application to keep up, the number of
+threads must grow as throughput grows.
+
+Unfortunately, the number of available threads is limited because the JDK implements threads as wrappers around
+operating system (OS) threads.
+
+OS threads are costly, so we cannot have too many of them, which makes the implementation ill-suited to the
+**thread-per-request** style.
+
+If each request consumes a thread, and thus an OS thread, for its duration, then the number of threads often becomes the
+limiting factor long before other resources, such as CPU or network connections, are exhausted.
+
+The JDK's current implementation of threads caps the application's throughput to a level well below what the hardware
+can support.
+
+This happens even when threads are pooled, since pooling helps avoid the high cost of starting a new thread but does not
+increase the total number of threads.
+
+#### Blocking, Non-Blocking, Asynchronous Server
 
 Before we discuss virtual threads, let's try to understand `blocking / non-blocking / asynchronous IO` and `thread per
 task / thread per request / thread per core model` first.
@@ -298,7 +356,7 @@ public class SocketAPIDemoServer {
 }
 ```
 
-#### Designing a simple TCP-based Order Management System (OMS) server
+**Designing a simple TCP-based Order Management System (OMS) server**
 
 Suppose, we have an Order Management System (OMS) which is working as a TCP server and receiving stock trading orders
 from various clients.
@@ -786,13 +844,202 @@ tasks as they become available, even across separate requests.
 
 In this case, the only actual processing that the connection-handling thread performs is the building of a base order.
 
-**_Virtual Threads based OMS_**
+#### Virtual Threads - Deep Dive
 
-Java's virtual threads are lightweight threads that are created and scheduled by the JVM itself. That's in contrast to
-standard threads, which are created and scheduled by the operating system (OS).
+Every instance of `java.lang.Thread` in the JDK is a **platform thread**.
+
+A **platform thread** runs Java code on an underlying **OS thread** and captures the OS thread for the code's entire
+lifetime.
+
+The number of **platform threads** is limited to the number of **OS threads**.
+
+A **virtual thread** is an instance of `java.lang.Thread` that runs Java code on an underlying **OS thread** but does
+not capture the **OS thread** for the code's entire lifetime.
+
+This means that **many virtual threads** can run their Java code on the **same OS thread**, effectively sharing it.
+
+While a **platform thread** monopolizes a precious **OS thread**, a **virtual thread** does not.
+
+The number of **virtual threads** can be much larger than the number of **OS threads**.
+
+![VirtualThreadHighLevel](VirtualThreadHighLevel.PNG)
+
+Virtual threads are a lightweight implementation of threads that are provided by the **JDK** rather than the **OS** and
+may be treated as **user-mode threads**.
+
+Virtual threads employ `M:N` scheduling, where a large number (`M`) of virtual threads is scheduled to run on a smaller
+number (`N`) of OS threads.
+
+![VirtualThreadUML](VirtualThreadUML.PNG)
 
 Virtual threads run by mounting an actual OS thread. When blocked, they unmount their OS thread, leaving it free to run
 the code of other virtual threads.
+
+![VirtualThreadMounting](VirtualThreadMounting.PNG)
+
+**_Code Demo_**
+
+- Test Case 1: Test platform thread using Thread constructor
+
+```
+    @Test
+    @DisplayName("Test platform thread using Thread constructor")
+    void testPlatformThreadUsingThreadConstructor() throws InterruptedException {
+        final var platformThread = new Thread(() -> System.out.printf("I am running inside thread=%s%n",
+                                                                      Thread.currentThread()));
+        platformThread.start();
+        platformThread.join();
+    }
+```
+
+Output:
+
+```
+I am running inside thread=Thread[#25,Thread-0,5,main]
+```
+
+- Test Case 2: Test platform thread using `Thread.ofPlatform()` method
+
+```
+    @Test
+    @DisplayName("Test platform thread using Thread.ofPlatform() method")
+    void testPlatformThreadUsingThreadOfPlatformMethod() throws InterruptedException {
+        final var platformThread = Thread.ofPlatform().unstarted(() ->
+                                                                         System.out.printf("I am running inside thread=%s%n",
+                                                                                           Thread.currentThread()));
+        platformThread.start();
+        platformThread.join();
+    }
+```
+
+Output:
+
+```
+I am running inside thread=Thread[#25,Thread-0,5,main]
+```
+
+- Test Case 3: Test virtual thread using `Thread.ofVirtual()` method
+
+```
+    @Test
+    @DisplayName("Test virtual thread using Thread.ofVirtual() method")
+    void testVirtualThreadUsingThreadOfVirtualMethod() throws InterruptedException {
+        final var virtualThread = Thread.ofVirtual().unstarted(() ->
+                                                                       System.out.printf("I am running inside thread=%s%n",
+                                                                                         Thread.currentThread()));
+        virtualThread.start();
+        virtualThread.join();
+    }
+```
+
+Output:
+
+```
+I am running inside thread=VirtualThread[#25]/runnable@ForkJoinPool-1-worker-1
+```
+
+- Test Case 4: Test multiple virtual threads
+
+```
+    @Test
+    @DisplayName("Test multiple virtual threads")
+    void testMultipleVirtualThreads() throws InterruptedException {
+        final Runnable runnable = () -> System.out.printf("I am running inside thread=%s%n",
+                                                          Thread.currentThread());
+        final List<Thread> virtualThreads = new ArrayList<>();
+        for (var i = 0; i < 3; i++) {
+            virtualThreads.add(Thread.ofVirtual().unstarted(runnable));
+        }
+        for (final var virtualThread : virtualThreads) {
+            virtualThread.start();
+        }
+        for (final var virtualThread : virtualThreads) {
+            virtualThread.join();
+        }
+    }
+```
+
+Output:
+
+```
+I am running inside thread=VirtualThread[#27]/runnable@ForkJoinPool-1-worker-3
+I am running inside thread=VirtualThread[#25]/runnable@ForkJoinPool-1-worker-2
+I am running inside thread=VirtualThread[#26]/runnable@ForkJoinPool-1-worker-2
+```
+
+- Test Case 5: Test large number of virtual threads
+
+The test case first obtains an `ExecutorService` that will create a new virtual thread for each submitted task.
+
+It then submits `10,000` tasks and waits for all of them to complete:
+
+```
+    @Test
+    @DisplayName("Test large number of virtual threads")
+    void testLargeNumberOfVirtualThreads() {
+        try (final var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            IntStream.range(0, 10_000).forEach(i -> {
+                executor.submit(() -> {
+                    TimeUnit.SECONDS.sleep(1L);
+                    return i;
+                });
+            });
+        }  // executor.close() is called implicitly, and waits
+    }
+```
+
+Output:
+
+```
+The test case runs in around 1 seconds => it means that all 10,000 integers were executed in parallel in virtual 
+threads.
+```
+
+The task in this example is simple code — sleep for one second — and modern hardware can easily support 10,000 virtual
+threads running such code concurrently.
+
+Behind the scenes, the JDK runs the code on a small number of OS threads, perhaps as few as one.
+
+Things would be very different if this program used an `ExecutorService` that creates a new **platform thread** for each
+task, such as `Executors.newCachedThreadPool()`.
+
+The `ExecutorService` would attempt to create 10,000 platform threads, and thus 10,000 OS threads, and the program might
+crash, depending on the machine and operating system.
+
+Things would be not much better if the program, instead, used an `ExecutorService` that obtains platform threads from a
+pool, such as `Executors.newFixedThreadPool(200)`.
+
+The `ExecutorService` would create 200 platform threads to be shared by all 10,000 tasks, so many of the tasks would run
+sequentially rather than concurrently and the program would take a long time to complete.
+
+For this program, a pool with 200 platform threads can only achieve a throughput of `200 tasks-per-second`, whereas
+virtual threads achieve a throughput of about `10,000 tasks-per-second` (after sufficient warmup).
+
+Moreover, if the 10_000 in the example program is changed to 1_000_000, then the program would submit 1,000,000 tasks,
+create 1,000,000 virtual threads that run concurrently, and (after sufficient warmup) achieve a throughput of about
+1,000,000 tasks-per-second.
+
+If the tasks in this program performed a calculation for one second (e.g., sorting a huge array), rather than merely
+sleeping, then increasing the number of threads beyond the number of processor cores would not help, whether they are
+virtual threads or platform threads.
+
+Virtual threads are not faster threads — they do not run code any faster than platform threads.
+
+They exist to provide scale (higher **throughput**), not speed (lower latency).
+
+There can be many more of them than platform threads, so they enable the higher concurrency needed for higher throughput
+according to Little's Law.
+
+To put it another way, virtual threads can significantly improve application throughput when:
+
+- The number of concurrent tasks is high (more than a few thousand), and
+- The workload is not CPU-bound, since having many more threads than processor cores cannot improve throughput in that
+  case.
+
+Virtual threads help to improve the **throughput** of typical server applications precisely because such applications
+consist of a great number of concurrent tasks that spend much of their time **waiting**.
+
+**_Virtual Threads based OMS_**
 
 ```java
 public class VirtualThreadPerOrderHandlerOMS {
@@ -906,7 +1153,7 @@ thread-safe.
 The key difference with using previous **futures based OMS** is that `join` is now implemented without blocking an OS
 thread.
 
-Performance-wise, both versions are equivalent: OS threads are reused by pooling and are never blocked but they are
+Performance-wise, both versions are equivalent: OS threads are reused by pooling and are never blocked, but they are
 written in two very different styles, one more traditional (imperative) and the other more functional.
 
 
