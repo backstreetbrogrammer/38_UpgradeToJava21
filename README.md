@@ -41,9 +41,9 @@ Java 21 has the following **15** features:
     - [Project Setup](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#project-setup)
 2. [Project Loom](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#chapter-02-project-loom)
     - [Virtual Threads](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#virtual-threads)
-        - Limitation of current server applications
-        - Blocking, Non-Blocking, Asynchronous Server
-        - Virtual Threads - Deep Dive
+        - [Limitation of current server applications](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#limitation-of-current-server-applications)
+        - [Blocking, Non-Blocking, Asynchronous Server](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#blocking-non-blocking-asynchronous-server)
+        - [Virtual Threads - Deep Dive](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#virtual-threads---deep-dive)
     - Scoped Values
     - Structured Concurrency
 3. Project Amber
