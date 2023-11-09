@@ -1015,9 +1015,9 @@ sequentially rather than concurrently and the program would take a long time to 
 For this program, a pool with 200 platform threads can only achieve a throughput of `200 tasks-per-second`, whereas
 virtual threads achieve a throughput of about `10,000 tasks-per-second` (after sufficient warmup).
 
-Moreover, if the 10_000 in the example program is changed to 1_000_000, then the program would submit 1,000,000 tasks,
-create 1,000,000 virtual threads that run concurrently, and (after sufficient warmup) achieve a throughput of about
-1,000,000 tasks-per-second.
+Moreover, if the 10_000 in the example program is changed to 1_000_000, then the program would submit 1_000_000 tasks,
+create 1_000_000 virtual threads that run concurrently, and (after sufficient warmup) achieve a throughput of about
+1_000_000 tasks-per-second.
 
 If the tasks in this program performed a calculation for one second (e.g., sorting a huge array), rather than merely
 sleeping, then increasing the number of threads beyond the number of processor cores would not help, whether they are
@@ -1030,7 +1030,7 @@ They exist to provide scale (higher **throughput**), not speed (lower latency).
 There can be many more of them than platform threads, so they enable the higher concurrency needed for higher throughput
 according to Little's Law.
 
-To put it another way, virtual threads can significantly improve application throughput when:
+To put it another way, virtual threads can significantly improve application **throughput** when:
 
 - The number of concurrent tasks is high (more than a few thousand), and
 - The workload is not CPU-bound, since having many more threads than processor cores cannot improve throughput in that
@@ -1038,6 +1038,15 @@ To put it another way, virtual threads can significantly improve application thr
 
 Virtual threads help to improve the **throughput** of typical server applications precisely because such applications
 consist of a great number of concurrent tasks that spend much of their time **waiting**.
+
+Besides that, we should also consider a few other points while using virtual threads:
+
+- there is no improvement in **latency**, but only **throughput**
+- virtual threads are always **daemon** threads => trying to set it to non-daemon will result in exception
+- virtual threads should never be used as fixed-size thread pool
+- virtual threads always have default priority => trying to change the priority will cause no effect
+
+Let's get back to our OMS server design.
 
 **_Virtual Threads based OMS_**
 
@@ -1155,5 +1164,40 @@ thread.
 
 Performance-wise, both versions are equivalent: OS threads are reused by pooling and are never blocked, but they are
 written in two very different styles, one more traditional (imperative) and the other more functional.
+
+If we use `10_000` sockets client connection at the same time - virtual thread-based OMS will be able to handle it
+without any issue.
+
+```java
+public class SocketClient {
+
+    public static void main(final String[] args) throws IOException, InterruptedException {
+        final var sockets = new Socket[10_000];
+
+        // connect
+        for (var i = 0; i < sockets.length; i++) {
+            sockets[i] = new Socket("localhost", 8080);
+            System.out.printf("Connected: [%s]%n", sockets[i]);
+        }
+
+        TimeUnit.SECONDS.sleep(1L);
+
+        // disconnect
+        for (final var socket : sockets) {
+            if (socket != null) {
+                socket.close();
+                System.out.printf("Disconnected: [%s]%n", socket);
+            }
+        }
+    }
+
+}
+```
+
+However, platform threads based OMS using `Executors.newCachedThreadPool()` or **thread-per-client** may suffer from
+connection exceptions and the servers using `Executors.newFixedThreadPool(n)` will suffer from throughput degradation
+and take long time to serve all the clients and send the order to send downstream.
+
+
 
 
