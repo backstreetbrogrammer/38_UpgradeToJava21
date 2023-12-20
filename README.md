@@ -1200,6 +1200,8 @@ However, platform threads based OMS using `Executors.newCachedThreadPool()` or *
 connection exceptions and the servers using `Executors.newFixedThreadPool(n)` will suffer from throughput degradation
 and take long time to serve all the clients and send the order to send downstream.
 
+### Youtube
 
+- [05 - Project Loom - Virtual Threads](https://youtu.be/YjG1cgwwES8)
 
 
