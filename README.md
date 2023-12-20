@@ -34,16 +34,16 @@ Java 21 has the following **15** features:
 
 ## Table of contents
 
-1. [Java Installation and Project Setup](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#chapter-01-java-installation-and-project-setup)
-    - [Java 21 installation](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#java-21-installation)
-    - [Maven installation](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#maven-installation)
-    - [IntelliJ installation](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#intellij-installation)
-    - [Project Setup](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#project-setup)
-2. [Project Loom](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#chapter-02-project-loom)
-    - [Virtual Threads](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#virtual-threads)
-        - [Limitation of current server applications](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#limitation-of-current-server-applications)
-        - [Blocking, Non-Blocking, Asynchronous Server](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#blocking-non-blocking-asynchronous-server)
-        - [Virtual Threads - Deep Dive](https://github.com/backstreetbrogrammer/38_UpgradeToJava21#virtual-threads---deep-dive)
+1. [Java Installation and Project Setup](https://github.com/backstreetbrogrammer/38_UpgradeToJava21?tab=readme-ov-file#chapter-01-java-installation-and-project-setup)
+    - [Java 21 installation](https://github.com/backstreetbrogrammer/38_UpgradeToJava21?tab=readme-ov-file#java-21-installation)
+    - [Maven installation](https://github.com/backstreetbrogrammer/38_UpgradeToJava21?tab=readme-ov-file#maven-installation)
+    - [IntelliJ installation](https://github.com/backstreetbrogrammer/38_UpgradeToJava21?tab=readme-ov-file#intellij-installation)
+    - [Project Setup](https://github.com/backstreetbrogrammer/38_UpgradeToJava21?tab=readme-ov-file#project-setup)
+2. [Project Loom](https://github.com/backstreetbrogrammer/38_UpgradeToJava21?tab=readme-ov-file#chapter-02-project-loom)
+    - [Virtual Threads](https://github.com/backstreetbrogrammer/38_UpgradeToJava21?tab=readme-ov-file#virtual-threads)
+        - [Limitation of current server applications](https://github.com/backstreetbrogrammer/38_UpgradeToJava21?tab=readme-ov-file#limitation-of-current-server-applications)
+        - [Blocking, Non-Blocking, Asynchronous Server](https://github.com/backstreetbrogrammer/38_UpgradeToJava21?tab=readme-ov-file#blocking-non-blocking-asynchronous-server)
+        - [Virtual Threads - Deep Dive](https://github.com/backstreetbrogrammer/38_UpgradeToJava21?tab=readme-ov-file#virtual-threads---deep-dive)
     - Scoped Values
     - Structured Concurrency
 3. Project Amber
