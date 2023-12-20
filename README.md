@@ -264,6 +264,8 @@ Virtual threads are **lightweight** threads that dramatically reduce the effort 
 - Enable existing code that uses the `java.lang.Thread` API to adopt virtual threads with minimal change
 - Enable easy **troubleshooting**, **debugging**, and **profiling** of virtual threads with existing JDK tools
 
+![ThroughputLatency](ThroughputLatency.PNG)
+
 #### Limitation of current server applications
 
 Server applications generally handle concurrent user requests that are independent of each other, so it makes sense for
