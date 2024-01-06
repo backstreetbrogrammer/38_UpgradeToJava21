@@ -1,5 +1,6 @@
 package com.backstreetbrogrammer.loom.virtualThreads;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -8,11 +9,24 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 public class VirtualThreadsTest {
+
+    private ConcurrentMap<String, Integer> threadsCountCache;
+    private int workTaskSizeMax;
+    private long timeToSleepInMs;
+
+    @BeforeEach
+    void setUp() {
+        threadsCountCache = new ConcurrentHashMap<>();
+        workTaskSizeMax = 100_000;
+        timeToSleepInMs = 1000L;
+    }
 
     @Test
     @DisplayName("Test platform thread using Thread constructor")
@@ -67,15 +81,19 @@ public class VirtualThreadsTest {
     void testLargeNumberOfVirtualThreads() {
         final var start = Instant.now();
         try (final var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            IntStream.range(0, 100_000).forEach(i -> executor.submit(
+            IntStream.range(0, workTaskSizeMax).forEach(i -> executor.submit(
                     () ->
                     {
-                        TimeUnit.MILLISECONDS.sleep(10L);
+                        TimeUnit.MILLISECONDS.sleep(timeToSleepInMs);
+                        threadsCountCache.merge(Thread.currentThread().getName(), 1, Integer::sum);
                         return i;
                     }));
         }  // executor.close() is called implicitly, and waits
         final var timeElapsed = (Duration.between(start, Instant.now()).toMillis());
-        System.out.printf("[Virtual Threads] time taken: %d ms%n%n", timeElapsed);
+        System.out.printf("[Virtual Threads] Total Latency: [%d ms]%n", timeElapsed);
+        System.out.printf("[Virtual Threads] Throughput: [%.2f req per ms]%n", (double) (workTaskSizeMax / timeElapsed));
+        System.out.printf("[Virtual Threads] No of threads used: [%d]%n", threadsCountCache.size());
+        System.out.printf("[Virtual Threads] threadsCountCache: [%s] %n%n", threadsCountCache);
     }
 
     @Test
@@ -83,15 +101,19 @@ public class VirtualThreadsTest {
     void testLargeNumberOfCachedPlatformThreads() {
         final var start = Instant.now();
         try (final var executor = Executors.newCachedThreadPool()) {
-            IntStream.range(0, 100_000).forEach(i -> executor.submit(
+            IntStream.range(0, workTaskSizeMax).forEach(i -> executor.submit(
                     () ->
                     {
-                        TimeUnit.MILLISECONDS.sleep(10L);
+                        TimeUnit.MILLISECONDS.sleep(timeToSleepInMs);
+                        threadsCountCache.merge(Thread.currentThread().getName(), 1, Integer::sum);
                         return i;
                     }));
         }
         final var timeElapsed = (Duration.between(start, Instant.now()).toMillis());
-        System.out.printf("[Cached Platform Threads] time taken: %d ms%n%n", timeElapsed);
+        System.out.printf("[Cached Platform Threads] Total Latency: [%d ms]%n", timeElapsed);
+        System.out.printf("[Cached Platform Threads] Throughput: [%.2f req per ms]%n", (double) (workTaskSizeMax / timeElapsed));
+        System.out.printf("[Cached Platform Threads] No of threads used: [%d]%n", threadsCountCache.size());
+        System.out.printf("[Cached Platform Threads] threadsCountCache: [%s] %n%n", threadsCountCache);
     }
 
     @Test
@@ -99,15 +121,20 @@ public class VirtualThreadsTest {
     @Disabled
     void testLargeNumberOfFixedPoolPlatformThreads() {
         final var start = Instant.now();
-        try (final var executor = Executors.newFixedThreadPool(16)) {
-            IntStream.range(0, 100_000).forEach(i -> executor.submit(
+        try (final var executor = Executors.newFixedThreadPool(200)) {
+            IntStream.range(0, workTaskSizeMax).forEach(i -> executor.submit(
                     () ->
                     {
-                        TimeUnit.MILLISECONDS.sleep(10L);
+                        TimeUnit.MILLISECONDS.sleep(timeToSleepInMs);
+                        //TimeUnit.MILLISECONDS.sleep(1L);
+                        threadsCountCache.merge(Thread.currentThread().getName(), 1, Integer::sum);
                         return i;
                     }));
         }
         final var timeElapsed = (Duration.between(start, Instant.now()).toMillis());
-        System.out.printf("[Fixed Pool Platform Threads] time taken: %d ms%n%n", timeElapsed);
+        System.out.printf("[Fixed Pool Platform Threads] Total Latency: [%d ms]%n", timeElapsed);
+        System.out.printf("[Fixed Pool Platform Threads] Throughput: [%.2f req per ms]%n", (double) (workTaskSizeMax / timeElapsed));
+        System.out.printf("[Fixed Pool Platform Threads] No of threads used: [%d]%n", threadsCountCache.size());
+        System.out.printf("[Fixed Pool Platform Threads] threadsCountCache: [%s] %n%n", threadsCountCache);
     }
 }

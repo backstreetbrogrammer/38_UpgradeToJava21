@@ -274,6 +274,27 @@ an application to handle a request by dedicating a thread to that request for it
 This **thread-per-request** style is easy to understand, easy to program, and easy to debug and profile because it uses
 the platform's unit of concurrency to represent the application's unit of concurrency.
 
+**Little's Law**
+> In mathematical queueing theory, Little's law is a theorem by John Little which states that the long-term average
+> number L of customers in a stationary system is equal to the long-term average effective arrival rate λ multiplied by
+> the average time W that a customer spends in the system.
+
+```
+L = λ * W
+```
+
+For example,
+
+Little's Law tells us that the average number of customers in the store `L`, is the effective arrival rate `λ`, times
+the average time that a customer spends in the store `W`.
+
+Assume customers arrive at the rate of `10 per hour` and stay an average of `0.5 hour`. This means we should find the
+average number of customers in the store at any time to be 5.
+
+```
+L = 10 * 0.5 = 5
+```
+
 The scalability of server applications is governed by **_Little's Law_**, which relates **latency**, **concurrency**,
 and **throughput**:
 
