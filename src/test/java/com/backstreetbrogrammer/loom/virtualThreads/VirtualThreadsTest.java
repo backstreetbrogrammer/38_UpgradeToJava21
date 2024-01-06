@@ -90,10 +90,7 @@ public class VirtualThreadsTest {
                     }));
         }  // executor.close() is called implicitly, and waits
         final var timeElapsed = (Duration.between(start, Instant.now()).toMillis());
-        System.out.printf("[Virtual Threads] Total Latency: [%d ms]%n", timeElapsed);
-        System.out.printf("[Virtual Threads] Throughput: [%.2f req per ms]%n", (double) (workTaskSizeMax / timeElapsed));
-        System.out.printf("[Virtual Threads] No of threads used: [%d]%n", threadsCountCache.size());
-        System.out.printf("[Virtual Threads] threadsCountCache: [%s] %n%n", threadsCountCache);
+        displayStats("Virtual Threads", timeElapsed);
     }
 
     @Test
@@ -110,10 +107,7 @@ public class VirtualThreadsTest {
                     }));
         }
         final var timeElapsed = (Duration.between(start, Instant.now()).toMillis());
-        System.out.printf("[Cached Platform Threads] Total Latency: [%d ms]%n", timeElapsed);
-        System.out.printf("[Cached Platform Threads] Throughput: [%.2f req per ms]%n", (double) (workTaskSizeMax / timeElapsed));
-        System.out.printf("[Cached Platform Threads] No of threads used: [%d]%n", threadsCountCache.size());
-        System.out.printf("[Cached Platform Threads] threadsCountCache: [%s] %n%n", threadsCountCache);
+        displayStats("Cached Platform Threads", timeElapsed);
     }
 
     @Test
@@ -132,9 +126,17 @@ public class VirtualThreadsTest {
                     }));
         }
         final var timeElapsed = (Duration.between(start, Instant.now()).toMillis());
-        System.out.printf("[Fixed Pool Platform Threads] Total Latency: [%d ms]%n", timeElapsed);
-        System.out.printf("[Fixed Pool Platform Threads] Throughput: [%.2f req per ms]%n", (double) (workTaskSizeMax / timeElapsed));
-        System.out.printf("[Fixed Pool Platform Threads] No of threads used: [%d]%n", threadsCountCache.size());
-        System.out.printf("[Fixed Pool Platform Threads] threadsCountCache: [%s] %n%n", threadsCountCache);
+        displayStats("Fixed Pool Platform Threads", timeElapsed);
+    }
+
+    private void displayStats(final String threadPool, final long timeElapsed) {
+        System.out.printf("[%s] Total Latency: [%d ms]%n",
+                          threadPool, timeElapsed);
+        System.out.printf("[%s] Throughput: [%.2f req per ms]%n",
+                          threadPool, (double) (workTaskSizeMax / timeElapsed));
+        System.out.printf("[%s] No of threads used: [%d]%n",
+                          threadPool, threadsCountCache.size());
+        System.out.printf("[%s] threadsCountCache: [%s] %n%n",
+                          threadPool, threadsCountCache);
     }
 }
