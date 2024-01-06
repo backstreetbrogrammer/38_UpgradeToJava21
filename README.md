@@ -1224,5 +1224,5 @@ and take long time to serve all the clients and send the order to send downstrea
 ### Youtube
 
 - [05 - Project Loom - Virtual Threads](https://youtu.be/YjG1cgwwES8)
-
+- [06 - Limitation of current servers and Littles Law](https://youtu.be/_485_1ON0_A)
 
