@@ -1,16 +1,16 @@
 package com.backstreetbrogrammer.loom.singleThreadedBlocking;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 public class SocketAPIDemoServer {
 
     public static void main(final String[] args) throws IOException {
-        final var serverSocket = new ServerSocket(8080);
+        final var port = 8080;
+        final var serverSocket = new ServerSocket(port);
         while (!serverSocket.isClosed()) {
+            System.out.printf("Server is listening on port: %d%n", port);
             final var socket = serverSocket.accept(); // blocks and socket can never be null
             handle(socket);
         }
