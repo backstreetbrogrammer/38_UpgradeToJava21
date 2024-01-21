@@ -1226,4 +1226,5 @@ and take long time to serve all the clients and send the order to send downstrea
 - [05 - Project Loom - Virtual Threads](https://youtu.be/YjG1cgwwES8)
 - [06 - Limitation of current servers and Littles Law](https://youtu.be/_485_1ON0_A)
 - [07 - TCP Socket Client-Server code demo](https://youtu.be/tpcejOwEYYY)
+- [08 - Designing a simple TCP-based Order Management System server](https://youtu.be/onQfIXJgs60)
 
