@@ -1228,4 +1228,5 @@ and take long time to serve all the clients and send the order to send downstrea
 - [07 - TCP Socket Client-Server code demo](https://youtu.be/tpcejOwEYYY)
 - [08 - Designing a simple TCP-based Order Management System server](https://youtu.be/onQfIXJgs60)
 - [09 - Thread per client OMS](https://youtu.be/JpHG6indo9Q)
+- [10 - Thread per client and Thread per order-parsing OMS](https://youtu.be/Da3DCRHLb74)
 
