@@ -1234,4 +1234,5 @@ and take long time to serve all the clients and send the order to send downstrea
 - [13 - Futures with Callbacks OMS](https://youtu.be/cuh-J1yDq_s)
 - [14 - Futures with composition OMS](https://youtu.be/bMRElW8Ra88)
 - [15 - Virtual Threads based OMS](https://youtu.be/UafPK93NV7s)
+- [16 - Virtual Threads with Futures OMS](https://youtu.be/7kLVxTU1zkM)
 
